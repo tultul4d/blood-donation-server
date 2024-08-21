@@ -35,8 +35,15 @@ async function run() {
     const requesterCollection = client.db("bloodDb").collection("request");
     const dashboardCollection = client.db("bloodDb").collection("dashboard");
     const blogCollection = client.db("bloodDb").collection("blogs");
+    // const donorCollection = client.db("bloodDb").collection("donor");
     
 
+    app.post('/request', async (req, res) => {
+      const newRequst = req.body;
+      newRequst.status = 'draft';
+      const result = await requesterCollection.insertOne(newRequst);
+      res.send(result);
+  });
 
     app.get('/request', async (req, res) => {
       try {
@@ -48,22 +55,34 @@ async function run() {
         res.status(500).send('Internal Server Error');
       }
     });
+
+
     
-    app.get('/request/:id', async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      try {
-        const result = await requesterCollection.findOne(query);
-        console.log(`Request ${id}:`, result);
-        if (!result) {
-          return res.status(404).send('Request not found');
-        }
-        res.send(result);
-      } catch (error) {
-        console.error(`Error fetching request ${id}:`, error);
-        res.status(500).send('Internal Server Error');
-      }
-    });
+    
+    // app.get('/request/:id', async (req, res) => {
+    //   const id = req.params.id;
+    //   const query = { _id: new ObjectId(id) };
+    //   try {
+    //     const result = await requesterCollection.findOne(query);
+    //     console.log(`Request ${id}:`, result);
+    //     if (!result) {
+    //       return res.status(404).send('Request not found');
+    //     }
+    //     res.send(result);
+    //   } catch (error) {
+    //     console.error(`Error fetching request ${id}:`, error);
+    //     res.status(500).send('Internal Server Error');
+    //   }
+    // });
+
+
+    // details
+  app.get('/request/:id', async (req, res) => {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) }
+    const result = await requesterCollection.findOne(query);
+    res.send(result);
+});
     
 
 
@@ -181,6 +200,25 @@ async function run() {
     res.send(result);
 });
 
+
+
+
+// // donor 
+
+// app.post('/donor', async (req, res) => {
+//   const newDonor = req.body;
+//   newDonor.status = 'draft';
+//   const result = await donorCollection.insertOne(newDonor);
+//   res.send(result);
+// });
+
+
+// app.get('/donor', async (req, res) => {
+//   const status = req.query.status;
+//   const query = status ? { status } : {};
+//   const donors = await donorCollection.find(query).toArray();
+//   res.send(donors);
+// });
 
 
     // Send a ping to confirm a successful connection
