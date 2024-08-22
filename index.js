@@ -36,14 +36,14 @@ async function run() {
     const dashboardCollection = client.db("bloodDb").collection("dashboard");
     const blogCollection = client.db("bloodDb").collection("blogs");
     // const donorCollection = client.db("bloodDb").collection("donor");
-    
+
 
     app.post('/request', async (req, res) => {
       const newRequst = req.body;
       newRequst.status = 'draft';
       const result = await requesterCollection.insertOne(newRequst);
       res.send(result);
-  });
+    });
 
     app.get('/request', async (req, res) => {
       try {
@@ -56,9 +56,78 @@ async function run() {
       }
     });
 
+    // Delete Blog
+    app.delete('/request/:id', async (req, res) => {
+      const { id } = req.params;
+      const result = await requesterCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
 
-    
-    
+    // update
+
+    app.put('/request/:id', async (req, res) => {
+      const id = req.params.id;
+
+      // Validate the ID
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ error: 'Invalid ID format' });
+      }
+
+      const Request = req.body;
+      console.log(id, Request);
+
+      // Check if the required fields are provided
+      if (!Request.hospitalName) {
+        return res.status(400).send({ error: 'Hospital name is required' });
+      }
+
+      const filter = { _id: new ObjectId(id) };
+      const option = {}; // No upsert option
+
+      const updatedRequest = {
+        $set: {
+          hospitalName: Request.hospitalName,
+          fullAddress: Request.fullAddress,
+          donationDate: Request.donationDate,
+          donationTime: Request.donationTime,
+          donationStatus: Request.donationStatus,
+          // Add other fields to update as needed
+        },
+      };
+      try {
+        const result = await requesterCollection.updateOne(filter, updatedRequest, option);
+        console.log('Update Result:', result);
+        res.send(result);
+      } catch (error) {
+        console.error('Error updating request:', error);
+        res.status(500).send({ error: 'Internal Server Error' });
+      }
+    });
+
+    // app.put('/request/:id', async(req, res) =>{
+    //   const id = req.params.id;
+    //   const Request = req.body;
+    //   console.log(id, Request);
+    //   const filter = {_id: new ObjectId(id)}
+    //   const option = {upsert: true}
+    //   const updatedRequest = {
+    //     $set: {
+    //      hospitalName: Request.hospitalName,
+
+
+    //     }
+    //   }
+    //   const result = await requesterCollection.updateOne(filter, updatedRequest, option )
+    //   res.send(result);
+
+    // })
+
+
+
+
+
+
+
     // app.get('/request/:id', async (req, res) => {
     //   const id = req.params.id;
     //   const query = { _id: new ObjectId(id) };
@@ -77,13 +146,13 @@ async function run() {
 
 
     // details
-  app.get('/request/:id', async (req, res) => {
-    const id = req.params.id;
-    const query = { _id: new ObjectId(id) }
-    const result = await requesterCollection.findOne(query);
-    res.send(result);
-});
-    
+    app.get('/request/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await requesterCollection.findOne(query);
+      res.send(result);
+    });
+
 
 
     // app.get('/request/:id', async (req, res) => {
@@ -105,31 +174,31 @@ async function run() {
 
 
 
-   // Route to update a request by ID
-  //  app.put('/request/:id', async (req, res) => {
-  //   try {
-  //     const { id } = req.params;
-  //     const objectId = new ObjectId(id);
-  //     const { donorName, donorEmail } = req.body;
+    // Route to update a request by ID
+    //  app.put('/request/:id', async (req, res) => {
+    //   try {
+    //     const { id } = req.params;
+    //     const objectId = new ObjectId(id);
+    //     const { donorName, donorEmail } = req.body;
 
-  //     const result = await requesterCollection.updateOne(
-  //       { _id: objectId },
-  //       { $set: { donationStatus: 'inprogress', donorName, donorEmail } }
-  //     );
+    //     const result = await requesterCollection.updateOne(
+    //       { _id: objectId },
+    //       { $set: { donationStatus: 'inprogress', donorName, donorEmail } }
+    //     );
 
-  //     if (result.modifiedCount === 0) {
-  //       return res.status(404).json({ error: 'Request not found or already updated' });
-  //     }
+    //     if (result.modifiedCount === 0) {
+    //       return res.status(404).json({ error: 'Request not found or already updated' });
+    //     }
 
-  //     const updatedRequest = await requesterCollection.findOne({ _id: objectId });
-  //     res.json(updatedRequest);
-  //   } catch (err) {
-  //     console.error('Error updating request:', err);
-  //     res.status(500).json({ error: 'Internal Server Error' });
-  //   }
-  // });
+    //     const updatedRequest = await requesterCollection.findOne({ _id: objectId });
+    //     res.json(updatedRequest);
+    //   } catch (err) {
+    //     console.error('Error updating request:', err);
+    //     res.status(500).json({ error: 'Internal Server Error' });
+    //   }
+    // });
 
-    
+
 
     // app.get('/request/:id', async(req, res) =>{
     //   const id = req.params.id;
@@ -145,80 +214,80 @@ async function run() {
     //   const result = await requesterCollection.findOne(query, options)
     //   res.send(result);
     // })
-   
 
-    
-    
 
-    app.get('/dashboard', async(req, res) =>{
-        const result = await dashboardCollection.find().toArray();
-        res.send(result);
+
+
+
+    app.get('/dashboard', async (req, res) => {
+      const result = await dashboardCollection.find().toArray();
+      res.send(result);
     })
 
 
 
 
- 
-          // Add Blog
-          app.post('/blogs', async (req, res) => {
-            const newBlog = req.body;
-            newBlog.status = 'draft';
-            const result = await blogCollection.insertOne(newBlog);
-            res.send(result);
-        });
 
-
-        // Fetch Blogs
-        app.get('/blogs', async (req, res) => {
-          const status = req.query.status;
-          const query = status ? { status } : {};
-          const blogs = await blogCollection.find(query).toArray();
-          res.send(blogs);
-      });
-
-       // Update Blog Status
-       app.put('/blogs/:id/status', async (req, res) => {
-        const { id } = req.params;
-        const { status } = req.body;
-        const filter = { _id: new ObjectId(id) };
-        const updateDoc = { $set: { status } };
-        const result = await blogCollection.updateOne(filter, updateDoc);
-        res.send(result);
+    // Add Blog
+    app.post('/blogs', async (req, res) => {
+      const newBlog = req.body;
+      newBlog.status = 'draft';
+      const result = await blogCollection.insertOne(newBlog);
+      res.send(result);
     });
 
-     // Delete Blog
-     app.delete('/blogs/:id', async (req, res) => {
+
+    // Fetch Blogs
+    app.get('/blogs', async (req, res) => {
+      const status = req.query.status;
+      const query = status ? { status } : {};
+      const blogs = await blogCollection.find(query).toArray();
+      res.send(blogs);
+    });
+
+    // Update Blog Status
+    app.put('/blogs/:id/status', async (req, res) => {
+      const { id } = req.params;
+      const { status } = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = { $set: { status } };
+      const result = await blogCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    // Delete Blog
+    app.delete('/blogs/:id', async (req, res) => {
       const { id } = req.params;
       const result = await blogCollection.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
-  });
-  // details
-  app.get('/blogs/:id', async (req, res) => {
-    const id = req.params.id;
-    const query = { _id: new ObjectId(id) }
-    const result = await blogCollection.findOne(query);
-    res.send(result);
-});
+    });
+    // details
+    app.get('/blogs/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await blogCollection.findOne(query);
+      res.send(result);
+    });
 
 
 
 
-// // donor 
+    // // donor 
 
-// app.post('/donor', async (req, res) => {
-//   const newDonor = req.body;
-//   newDonor.status = 'draft';
-//   const result = await donorCollection.insertOne(newDonor);
-//   res.send(result);
-// });
+    // app.post('/donor', async (req, res) => {
+    //   const newDonor = req.body;
+    //   newDonor.status = 'draft';
+    //   const result = await donorCollection.insertOne(newDonor);
+    //   res.send(result);
+    // });
 
 
-// app.get('/donor', async (req, res) => {
-//   const status = req.query.status;
-//   const query = status ? { status } : {};
-//   const donors = await donorCollection.find(query).toArray();
-//   res.send(donors);
-// });
+    // app.get('/donor', async (req, res) => {
+    //   const status = req.query.status;
+    //   const query = status ? { status } : {};
+    //   const donors = await donorCollection.find(query).toArray();
+    //   res.send(donors);
+    // });
 
 
     // Send a ping to confirm a successful connection
@@ -233,10 +302,10 @@ run().catch(console.dir);
 
 
 
-app.get('/', (req, res) =>{
-res.send('blood is going ')
+app.get('/', (req, res) => {
+  res.send('blood is going ')
 })
 
-app.listen(port, () =>{
-    console.log(`blood is sitting on port ${port}`);
+app.listen(port, () => {
+  console.log(`blood is sitting on port ${port}`);
 })
