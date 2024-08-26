@@ -51,19 +51,71 @@ app.post('/jwt', async(req, res)=> {
   res.send({ token });
 })
 
+// middlewares
+const verifyToken = (req, res, next) =>{
+  console.log('inside verify token', req.headers.authorization);
+  if(!req.headers.authorization){
+    return res.status(401).send({message: 'forbidden access'});
+  }
+  const token = req.headers.authorization.split(' ')[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) =>{
+    if(err){
+      return res.status(401).send({message: 'forbidden access'})
+    }
+    req.decoded = decoded;
+    next();
+  })
+ 
+  
+}
+
+
+
+const verifyAdmin = async(req, res, next)  =>{
+     const email = req.decoded.email;
+     const query = {email: email};
+     const user = await userCollection.findOne(query);
+     const isAdmin = user?.role === 'admin';
+     if(!isAdmin){
+      return res.status(403).send({message: 'forbidden access' })
+     }
+     next();
+
+}
+
 
 
 // users related api
 
-app.get('/user',async(req, res) =>{
+app.get('/user', verifyToken, verifyAdmin, async(req, res) =>{
+  // console.log(req.headers);
   const result = await userCollection.find().toArray()
   res.send(result);
 });
 
 
+app.get('/user/admin/:email', verifyToken, async(req , res) =>{
+  const email = req.params.email;
+  if(email !== req.decoded.email) {
+    return res.status(403).send({message: 'unauthorization access'})
+  }
+
+  const query = {email: email}
+  const user = await userCollection.findOne(query);
+  let admin = false;
+  if(user){
+    admin = user?.role === 'admin';
+
+  }
+  res.send({ admin });
+
+})
+
+
 
 app.post('/user', async (req, res) =>{
   const user = req.body;
+  user.status = 'draft';
 
   const query = {email: user.email}
   const existingUser = await userCollection.findOne(query);
@@ -75,7 +127,37 @@ app.post('/user', async (req, res) =>{
 });
 
 
-app.patch('/user/admin/:id', async(req, res) =>{
+//  users bloack api
+
+app.patch('/user/block/:id', verifyToken, verifyAdmin, async(req, res) =>{
+  const id = req.params.id;
+  const filter = {_id: new ObjectId(id) };
+  const updateDoc = {
+    $set: {
+      status: 'blocked'
+    }
+  }
+  const result = await userCollection.updateOne(filter, updateDoc);
+  res.send(result);
+});
+
+// user unblock api
+
+app.patch('/user/unblock/:id', verifyToken, verifyAdmin, async(req, res) =>{
+  const id = req.params.id;
+  const filter = {_id: new ObjectId(id) };
+  const updateDoc = {
+    $set: {
+      status: 'active'
+    }
+  }
+  const result = await userCollection.updateOne(filter, updateDoc);
+  res.send(result);
+});
+
+
+
+app.patch('/user/admin/:id', verifyToken, verifyAdmin, async(req, res) =>{
   const id = req.params.id;
   const filter = {_id: new ObjectId(id) };
   const updateDoc = {
@@ -91,7 +173,7 @@ app.patch('/user/admin/:id', async(req, res) =>{
 
 
 // Delete users
-app.delete('/user/:id', async (req, res) => {
+app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
   const { id } = req.params;
   const result = await userCollection.deleteOne({ _id: new ObjectId(id) });
   res.send(result);
