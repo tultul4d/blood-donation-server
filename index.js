@@ -421,6 +421,34 @@ app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
     });
 
 
+    // stats or analytics
+    app.get('/admin-stats', verifyToken, verifyAdmin,  async(req, res) =>{
+      const user =  await userCollection.estimatedDocumentCount();
+      const donor = await dashboardCollection.estimatedDocumentCount();
+      const requests = await requesterCollection.estimatedDocumentCount(); 
+
+
+      // Calculate total donations from the dashboardCollection
+    const totalDonations = await dashboardCollection.aggregate([
+      {
+          $group: {
+              _id: null,
+              total: { $sum: "$donations" } // Replace "donations" with the actual field name if different
+          }
+      }
+  ]).toArray();
+
+  const donations = totalDonations[0]?.total || 0;
+      res.send({
+        user,
+        donor,
+        requests,
+        donations
+        
+      })
+    } )
+
+
 
 
     // // donor 
