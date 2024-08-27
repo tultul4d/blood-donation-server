@@ -84,6 +84,66 @@ const verifyAdmin = async(req, res, next)  =>{
 }
 
 
+// Make a user a volunteer
+app.patch('/user/volunteer/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+  const filter = { _id: new ObjectId(id) };
+  const updateDoc = {
+    $set: {
+      role: 'volunteer'
+    }
+  };
+  const result = await userCollection.updateOne(filter, updateDoc);
+  res.send(result);
+});
+
+// Check if the user is a volunteer
+app.get('/user/volunteer/:email', verifyToken, async (req, res) => {
+  const email = req.params.email;
+  if (email !== req.decoded.email) {
+      return res.status(403).send({ message: 'Unauthorized access' });
+  }
+
+  const query = { email: email };
+  const user = await userCollection.findOne(query);
+  const isVolunteer = user?.role === 'volunteer';
+
+  res.send({ volunteer: isVolunteer });
+});
+
+// All Blood Donation Requests
+app.get('/dashboard/all-blood-donation-request', verifyToken, async (req, res) => {
+  try {
+      const user = req.user; // Assumes you have middleware that adds the user to the request
+      if (user.role === 'admin' || user.role === 'volunteer') {
+          // Fetch and return requests with pagination and filtering
+          const { page, limit } = req.query; // Pagination parameters
+          const requests = await getRequests({ page, limit });
+          res.json(requests);
+      } else {
+          res.status(403).json({ message: 'Forbidden' });
+      }
+  } catch (error) {
+      res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Content Management
+app.post('/content-management', verifyToken, async (req, res) => {
+  try {
+      const user = req.user; // Assumes you have middleware that adds the user to the request
+      if (user.role === 'admin') {
+          // Create or manage content
+          const content = req.body;
+          const result = await createContent(content);
+          res.json(result);
+      } else {
+          res.status(403).json({ message: 'Forbidden' });
+      }
+  } catch (error) {
+      res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
 // users related api
 
@@ -286,9 +346,26 @@ app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
 
 
 
+    const districts = ['Dhaka', 'Chattogram', 'Rajshahi', 'Khulna'];
+const upazilas = ['Upazila 1', 'Upazila 2', 'Upazila 3'];
+
+app.get('/districts', (req, res) => {
+  res.json(districts);
+});
+
+app.get('/upazilas', (req, res) => {
+  res.json(upazilas);
+});
+
     app.get('/dashboard', async (req, res) => {
-      const result = await dashboardCollection.find().toArray();
-      res.send(result);
+      try {
+        const { bloodGroup, district, upazila } = req.query;
+        // Assuming you have a function to fetch donors based on these parameters
+        const donors = await getDonors({ bloodGroup, district, upazila });
+        res.json(donors);
+      } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
     })
 
 
