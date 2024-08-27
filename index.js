@@ -180,6 +180,11 @@ app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
 });
 
 
+
+
+
+
+
     app.post('/request', async (req, res) => {
       const newRequst = req.body;
       newRequst.status = 'draft';
@@ -198,6 +203,11 @@ app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
       }
     });
 
+    app.get('/requests', verifyToken, verifyAdmin, async (req, res) => {
+      const requests = await requesterCollection.find().toArray();
+      res.send(requests);
+    });
+
     // Delete Blog
     app.delete('/request/:id', async (req, res) => {
       const { id } = req.params;
@@ -205,8 +215,26 @@ app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
       res.send(result);
     });
 
+
+    app.delete('/requests/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const { id } = req.params;
+      const filter = { _id: new ObjectId(id) };
+      const result = await requesterCollection.deleteOne(filter);
+      res.send(result);
+  });
+  
     // update
 
+    app.put('/requests/:id/status', verifyToken, verifyAdmin, async (req, res) => {
+      const { id } = req.params;
+      const { status } = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = { $set: { status } };
+      const result = await requesterCollection.updateOne(filter, updateDoc);
+      res.send(result);
+  });
+  
+// update only login user
     app.put('/request/:id', async (req, res) => {
       const id = req.params.id;
 
@@ -246,126 +274,14 @@ app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
       }
     });
 
-    // app.put('/request/:id', async(req, res) =>{
-    //   const id = req.params.id;
-    //   const Request = req.body;
-    //   console.log(id, Request);
-    //   const filter = {_id: new ObjectId(id)}
-    //   const option = {upsert: true}
-    //   const updatedRequest = {
-    //     $set: {
-    //      hospitalName: Request.hospitalName,
-
-
-    //     }
-    //   }
-    //   const result = await requesterCollection.updateOne(filter, updatedRequest, option )
-    //   res.send(result);
-
-    // })
-
-
-
-
-
-
-
-    // app.get('/request/:id', async (req, res) => {
-    //   const id = req.params.id;
-    //   const query = { _id: new ObjectId(id) };
-    //   try {
-    //     const result = await requesterCollection.findOne(query);
-    //     console.log(`Request ${id}:`, result);
-    //     if (!result) {
-    //       return res.status(404).send('Request not found');
-    //     }
-    //     res.send(result);
-    //   } catch (error) {
-    //     console.error(`Error fetching request ${id}:`, error);
-    //     res.status(500).send('Internal Server Error');
-    //   }
-    // });
-
 
     // details
-    app.get('/request/:id', async (req, res) => {
+    app.get('/request/:id',  async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
       const result = await requesterCollection.findOne(query);
       res.send(result);
     });
-
-    // // details
-    // app.get('/blogs/:id', async (req, res) => {
-    //   const id = req.params.id;
-    //   const query = { _id: new ObjectId(id) }
-    //   const result = await blogCollection.findOne(query);
-    //   res.send(result);
-    // });
-
-
-
-
-    // app.get('/request/:id', async (req, res) => {
-    //   try {
-    //     const { id } = req.params;
-    //     const objectId = new ObjectId(id);
-    //     const request = await requesterCollection.findOne({ _id: objectId });
-
-    //     if (!request) {
-    //       return res.status(404).json({ error: 'Request not found' });
-    //     }
-
-    //     res.json(request);
-    //   } catch (err) {
-    //     console.error('Error fetching request by ID:', err);
-    //     res.status(500).json({ error: 'Internal Server Error' });
-    //   }
-    // });
-
-
-
-    // Route to update a request by ID
-    //  app.put('/request/:id', async (req, res) => {
-    //   try {
-    //     const { id } = req.params;
-    //     const objectId = new ObjectId(id);
-    //     const { donorName, donorEmail } = req.body;
-
-    //     const result = await requesterCollection.updateOne(
-    //       { _id: objectId },
-    //       { $set: { donationStatus: 'inprogress', donorName, donorEmail } }
-    //     );
-
-    //     if (result.modifiedCount === 0) {
-    //       return res.status(404).json({ error: 'Request not found or already updated' });
-    //     }
-
-    //     const updatedRequest = await requesterCollection.findOne({ _id: objectId });
-    //     res.json(updatedRequest);
-    //   } catch (err) {
-    //     console.error('Error updating request:', err);
-    //     res.status(500).json({ error: 'Internal Server Error' });
-    //   }
-    // });
-
-
-
-    // app.get('/request/:id', async(req, res) =>{
-    //   const id = req.params.id;
-    //   const query = {_id: new ObjectId (id)}
-
-
-    //   // const options = {
-    //   //   projection: { title:1, name: 1, 
-    //   //     photo: 1, 
-    //   //     reason: 1, 
-    //   //     createdAt: 1 },
-    //   // }
-    //   const result = await requesterCollection.findOne(query, options)
-    //   res.send(result);
-    // })
-
 
 
 
@@ -380,7 +296,7 @@ app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
 
 
     // Add Blog
-    app.post('/blogs', async (req, res) => {
+    app.post('/blogs',  async (req, res) => {
       const newBlog = req.body;
       newBlog.status = 'draft';
       const result = await blogCollection.insertOne(newBlog);
@@ -389,7 +305,7 @@ app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
 
 
     // Fetch Blogs
-    app.get('/blogs', async (req, res) => {
+    app.get('/blogs',  async (req, res) => {
       const status = req.query.status;
       const query = status ? { status } : {};
       const blogs = await blogCollection.find(query).toArray();
@@ -397,7 +313,7 @@ app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
     });
 
     // Update Blog Status
-    app.put('/blogs/:id/status', async (req, res) => {
+    app.put('/blogs/:id/status', verifyToken, verifyAdmin, async (req, res) => {
       const { id } = req.params;
       const { status } = req.body;
       const filter = { _id: new ObjectId(id) };
@@ -407,11 +323,12 @@ app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
     });
 
     // Delete Blog
-    app.delete('/blogs/:id', async (req, res) => {
+    app.delete('/blogs/:id', verifyToken, verifyAdmin,  async (req, res) => {
       const { id } = req.params;
       const result = await blogCollection.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
     });
+
     // details
     app.get('/blogs/:id', async (req, res) => {
       const id = req.params.id;
