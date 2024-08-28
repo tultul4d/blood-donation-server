@@ -83,6 +83,31 @@ const verifyAdmin = async(req, res, next)  =>{
 
 }
 
+// const verifyVolunteer = async(req, res, next)  =>{
+//   const email = req.decoded.email;
+//   const query = {email: email};
+//   const user = await userCollection.findOne(query);
+//   const isVolunteer = user?.role === 'volunteer';
+//   if(!isVolunteer){
+//    return res.status(403).send({message: 'forbidden access' })
+//   }
+//   next();
+
+// }
+
+const verifyVolunteer = async (req, res, next) => {
+  const email = req.decoded.email;
+  const query = { email: email };
+  const user = await userCollection.findOne(query);
+  const isVolunteer = user?.role === 'volunteer';
+
+  if (!isVolunteer) {
+      return res.status(403).send({ message: 'forbidden access' });
+  }
+  next();
+};
+
+
 
 // Make a user a volunteer
 app.patch('/user/volunteer/:id', verifyToken, verifyAdmin, async (req, res) => {
@@ -97,7 +122,22 @@ app.patch('/user/volunteer/:id', verifyToken, verifyAdmin, async (req, res) => {
   res.send(result);
 });
 
+// Route to toggle between 'user' and 'volunteer' roles
+app.patch('/user/:role/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const { role, id } = req.params;
+  const filter = { _id: new ObjectId(id) };
+  const updateDoc = {
+    $set: {
+      role: role
+    }
+  };
+  const result = await userCollection.updateOne(filter, updateDoc);
+  res.send(result);
+});
+
+
 // Check if the user is a volunteer
+
 app.get('/user/volunteer/:email', verifyToken, async (req, res) => {
   const email = req.params.email;
   if (email !== req.decoded.email) {
@@ -111,22 +151,77 @@ app.get('/user/volunteer/:email', verifyToken, async (req, res) => {
   res.send({ volunteer: isVolunteer });
 });
 
+
+
+
 // All Blood Donation Requests
-app.get('/dashboard/all-blood-donation-request', verifyToken, async (req, res) => {
-  try {
-      const user = req.user; // Assumes you have middleware that adds the user to the request
-      if (user.role === 'admin' || user.role === 'volunteer') {
-          // Fetch and return requests with pagination and filtering
-          const { page, limit } = req.query; // Pagination parameters
-          const requests = await getRequests({ page, limit });
-          res.json(requests);
-      } else {
-          res.status(403).json({ message: 'Forbidden' });
-      }
-  } catch (error) {
-      res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
+// Endpoint to get all blood donation requests
+// app.get('', verifyToken, async (req, res) => {
+//   try {
+//       const requests = await requesterCollection.find().toArray();
+//       res.send({ requests });
+//   } catch (error) {
+//       res.status(500).send({ message: 'Failed to fetch donation requests', error: error.message });
+//   }
+// });
+
+
+// Endpoint to update donation status
+// app.put('/dashboard/update-donation-status/:id', verifyToken, async (req, res) => {
+//   const id = req.params.id;
+//   const { status } = req.body;
+//   const filter = { _id: new ObjectId(id) };
+//   const updateDoc = {
+//       $set: {
+//           donationStatus: status
+//       }
+//   };
+
+//   try {
+//       const result = await requesterCollection.updateOne(filter, updateDoc);
+//       if (result.modifiedCount > 0) {
+//           res.send({ message: 'Donation status updated successfully', result });
+//       } else {
+//           res.status(404).send({ message: 'Donation request not found or no changes made' });
+//       }
+//   } catch (error) {
+//       res.status(500).send({ message: 'Failed to update donation status', error: error.message });
+//   }
+// });
+//  Endpoint delet
+// app.delete('/dashboard/delete-donation-request/:id', verifyToken, async (req, res) => {
+//   const id = req.params.id;
+//   const filter = { _id: new ObjectId(id) };
+
+//   try {
+//       const result = await requesterCollection.deleteOne(filter);
+//       if (result.deletedCount > 0) {
+//           res.send({ message: 'Donation request deleted successfully' });
+//       } else {
+//           res.status(404).send({ message: 'Donation request not found' });
+//       }
+//   } catch (error) {
+//       res.status(500).send({ message: 'Failed to delete donation request', error: error.message });
+//   }
+// });
+
+
+
+// app.get('/dashboard/all-blood-donation-request', verifyToken,  async (req, res) => {
+//   try {
+//       const user = req.user; // Assumes you have middleware that adds the user to the request
+//       if (user.role === 'admin' || user.role === 'volunteer') {
+//           // Fetch and return requests with pagination and filtering
+//           const { page, limit } = req.query; // Pagination parameters
+//           const requests = await getRequests({ page, limit });
+//           res.json(requests);
+//       } else {
+//           res.status(403).json({ message: 'Forbidden' });
+//       }
+//   } catch (error) {
+//       res.status(500).json({ error: 'Internal Server Error' });
+//   }
+// });
 
 // Content Management
 app.post('/content-management', verifyToken, async (req, res) => {
@@ -231,6 +326,19 @@ app.patch('/user/admin/:id', verifyToken, verifyAdmin, async(req, res) =>{
 } )
 
 
+app.patch('/user/:role/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const { role, id } = req.params;
+  const filter = { _id: new ObjectId(id) };
+  const updateDoc = {
+    $set: {
+      role: role
+    }
+  };
+  const result = await userCollection.updateOne(filter, updateDoc);
+  res.send(result);
+});
+
+
 
 // Delete users
 app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
@@ -252,7 +360,7 @@ app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
       res.send(result);
     });
 
-    app.get('/request', async (req, res) => {
+    app.get('/request',  async (req, res) => {
       try {
         const result = await requesterCollection.find().toArray();
         console.log('All requests:', result);
@@ -267,6 +375,11 @@ app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
       const requests = await requesterCollection.find().toArray();
       res.send(requests);
     });
+
+    // app.get('/requests', verifyToken, verifyVolunteer, async (req, res) => {
+    //   const requests = await requesterCollection.find().toArray();
+    //   res.send(requests);
+    // });
 
     // Delete Blog
     app.delete('/request/:id', async (req, res) => {
