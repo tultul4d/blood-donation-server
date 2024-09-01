@@ -107,6 +107,18 @@ const verifyVolunteer = async (req, res, next) => {
   next();
 };
 
+app.post('/user', async (req, res) => {
+  const newUser = req.body;
+  const query = {email: newUser.email}
+  const existingUser = await userCollection.findOne(query);
+  if (existingUser) {
+    return res.send({message: 'user already exists', insertedId: null })
+  }
+//  newUser.status = 'Active';
+  const result = await userCollection.insertOne(newUser);
+  res.send(result);
+});
+
 
 
 // Make a user a volunteer
@@ -266,67 +278,7 @@ app.get('/user/admin/:email', verifyToken, async(req , res) =>{
 
 })
 
-
-
-app.post('/user', async (req, res) =>{
-  const user = req.body;
-  user.status = 'draft';
-
-  const query = {email: user.email}
-  const existingUser = await userCollection.findOne(query);
-  if(existingUser){
-    return res.send({message: 'user already exists', insertedId: null })
-  }
-  const result = await userCollection.insertOne(user);
-  res.send(result);
-});
-
-
-//  users bloack api
-
-app.patch('/user/block/:id', verifyToken, verifyAdmin, async(req, res) =>{
-  const id = req.params.id;
-  const filter = {_id: new ObjectId(id) };
-  const updateDoc = {
-    $set: {
-      status: 'blocked'
-    }
-  }
-  const result = await userCollection.updateOne(filter, updateDoc);
-  res.send(result);
-});
-
-// user unblock api
-
-app.patch('/user/unblock/:id', verifyToken, verifyAdmin, async(req, res) =>{
-  const id = req.params.id;
-  const filter = {_id: new ObjectId(id) };
-  const updateDoc = {
-    $set: {
-      status: 'active'
-    }
-  }
-  const result = await userCollection.updateOne(filter, updateDoc);
-  res.send(result);
-});
-
-
-
-app.patch('/user/admin/:id', verifyToken, verifyAdmin, async(req, res) =>{
-  const id = req.params.id;
-  const filter = {_id: new ObjectId(id) };
-  const updateDoc = {
-    $set: {
-      role: 'admin'
-    }
-  }
-  const result = await userCollection.updateOne(filter, updateDoc);
-  res.send( result);
-
-} )
-
-
-app.patch('/user/:role/:id', verifyToken, verifyAdmin, async (req, res) => {
+app.patch('/user/:role/:id',  async (req, res) => {
   const { role, id } = req.params;
   const filter = { _id: new ObjectId(id) };
   const updateDoc = {
@@ -339,6 +291,101 @@ app.patch('/user/:role/:id', verifyToken, verifyAdmin, async (req, res) => {
 });
 
 
+
+// app.post('/user', async (req, res) =>{
+//   const user = req.body;
+//   user.status = 'Active';
+
+//   const query = {email: user.email}
+//   const existingUser = await userCollection.findOne(query);
+//   if(existingUser){
+//     return res.send({message: 'user already exists', insertedId: null })
+//   }
+//   const result = await userCollection.insertOne(user);
+//   res.send(result);
+// });
+
+
+
+// app.patch('/user/block/:id',  async(req, res) => {
+//   try {
+//     const id = req.params.id;
+
+//     // Validate ObjectId
+//     if (!ObjectId.isValid(id)) {
+//       return res.status(400).send({ message: 'Invalid user ID' });
+//     }
+
+//     const filter = { _id: new ObjectId(id) };
+//     const updateDoc = {
+//       $set: {
+//         status: 'Blocked'
+//       }
+//     };
+
+//     const result = await userCollection.updateOne(filter, updateDoc);
+
+//     if (result.modifiedCount === 0) {
+//       return res.status(404).send({ message: 'User not found or already blocked' });
+//     }
+
+//     res.send({ message: 'User blocked successfully', result });
+//   } catch (error) {
+//     res.status(500).send({ message: 'Internal server error', error });
+//   }
+// });
+
+// app.patch('/user/unblock/:id',  async(req, res) => {
+//   try {
+//     const id = req.params.id;
+
+//     // Validate ObjectId
+//     if (!ObjectId.isValid(id)) {
+//       return res.status(400).send({ message: 'Invalid user ID' });
+//     }
+
+//     const filter = { _id: new ObjectId(id) };
+//     const updateDoc = {
+//       $set: {
+//         status: 'Active'
+//       }
+//     };
+
+//     const result = await userCollection.updateOne(filter, updateDoc);
+
+//     if (result.modifiedCount === 0) {
+//       return res.status(404).send({ message: 'User not found or already active' });
+//     }
+
+//     res.send({ message: 'User unblocked successfully', result });
+//   } catch (error) {
+//     res.status(500).send({ message: 'Internal server error', error });
+//   }
+// });
+
+// app.patch('/user/:status/:id',  async (req, res) => {
+//   const { status, id } = req.params;
+//   const filter = { _id: new ObjectId(id) };
+//   const updateDoc = {
+//     $set: {
+//       status: status
+//     }
+//   };
+//   const result = await userCollection.updateOne(filter, updateDoc);
+//   res.send(result);
+// });
+
+
+
+
+// app.patch('/user/:role/:id', async (req, res) => {
+//   const { role, id } = req.params;
+//   const filter = { _id: new ObjectId(id) };
+//   const updateDoc = { $set: { role: role } };
+
+//   const result = await userCollection.updateOne(filter, updateDoc);
+//   res.send(result);
+// });
 
 // Delete users
 app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
@@ -380,6 +427,15 @@ app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
     //   const requests = await requesterCollection.find().toArray();
     //   res.send(requests);
     // });
+
+
+    // Get all requests with optional status filter
+app.get('/requests', async (req, res) => {
+  const status = req.query.status;
+  const filter = status && status !== 'all' ? { status } : {};
+  const result = await requesterCollection.find(filter).toArray();
+  res.send(result);
+});
 
     // Delete Blog
     app.delete('/request/:id', async (req, res) => {
@@ -434,9 +490,14 @@ app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
           donationDate: Request.donationDate,
           donationTime: Request.donationTime,
           donationStatus: Request.donationStatus,
+          // status: Request.status,
           // Add other fields to update as needed
         },
       };
+
+
+
+
       try {
         const result = await requesterCollection.updateOne(filter, updatedRequest, option);
         console.log('Update Result:', result);
@@ -556,7 +617,30 @@ app.get('/upazilas', (req, res) => {
     } )
 
 
+    app.get('/volenteer-stats', verifyToken,   async(req, res) =>{
+      const user =  await userCollection.estimatedDocumentCount();
+      const donor = await dashboardCollection.estimatedDocumentCount();
+      const requests = await requesterCollection.estimatedDocumentCount(); 
 
+
+      // Calculate total donations from the dashboardCollection
+    const totalDonations = await dashboardCollection.aggregate([
+      {
+          $group: {
+              _id: null,
+              total: { $sum: "$donations" } // Replace "donations" with the actual field name if different
+          }
+      }
+  ]).toArray();
+
+  const donations = totalDonations[0]?.total || 0;
+      res.send({
+        user,
+       donor,
+       requests,
+       donations
+      })
+    } )
 
     // // donor 
 
