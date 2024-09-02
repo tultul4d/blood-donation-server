@@ -624,6 +624,38 @@ app.get('/upazilas', (req, res) => {
 
 
 
+// PATCH request to update specific fields of a request
+app.patch('/request/:id', async (req, res) => {
+  const { id } = req.params;
+
+  // Validate the ID
+  if (!ObjectId.isValid(id)) {
+      return res.status(400).send({ error: 'Invalid ID format' });
+  }
+
+  const updateFields = req.body;
+
+  // Check if there are fields to update
+  if (Object.keys(updateFields).length === 0) {
+      return res.status(400).send({ error: 'No fields to update' });
+  }
+
+  const filter = { _id: new ObjectId(id) };
+  const updateDoc = {
+      $set: updateFields,
+  };
+
+  try {
+      const result = await requesterCollection.updateOne(filter, updateDoc);
+      if (result.modifiedCount === 0) {
+          return res.status(404).send({ message: 'Request not found or no changes made' });
+      }
+      res.send(result);
+  } catch (error) {
+      console.error('Error updating request:', error);
+      res.status(500).send({ error: 'Internal Server Error' });
+  }
+});
 
 
     // Add Blog
