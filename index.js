@@ -400,22 +400,45 @@ app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
 
 
 
+    // app.post('/request', async (req, res) => {
+    //   const newRequst = req.body;
+    //   newRequst.status = 'Pending';
+    //   const result = await requesterCollection.insertOne(newRequst);
+    //   res.send(result);
+    // });
+
     app.post('/request', async (req, res) => {
-      const newRequst = req.body;
-      newRequst.status = 'draft';
-      const result = await requesterCollection.insertOne(newRequst);
-      res.send(result);
-    });
+      const newRequest = req.body;
+  
+      try {
+          // Fetch the user based on email from the userCollection
+          const user = await userCollection.findOne({ email: newRequest.requesterEmail });
+  
+          if (user) {
+              // Add the role from the userCollection to the request
+              newRequest.role = user.role ; // Default to 'donor' if the role is not found
+  
+              // Set default status
+              newRequest.status = 'Pending';
+  
+              // Insert the new request into the requesterCollection
+              const result = await requesterCollection.insertOne(newRequest);
+  
+              res.send(result);
+          } else {
+              res.status(404).send({ message: 'User not found' });
+          }
+      } catch (error) {
+          console.error('Error creating request:', error);
+          res.status(500).send({ message: 'Failed to create request' });
+      }
+  });
 
     app.get('/request',  async (req, res) => {
-      try {
-        const result = await requesterCollection.find().toArray();
-        console.log('All requests:', result);
-        res.send(result);
-      } catch (error) {
-        console.error('Error fetching requests:', error);
-        res.status(500).send('Internal Server Error');
-      }
+      const status = req.query.status;
+      const query = status ? { status } : {};
+      const request = await requesterCollection.find(query).toArray();
+      res.send(request)
     });
 
     app.get('/requests', verifyToken, verifyAdmin, async (req, res) => {
@@ -430,12 +453,12 @@ app.delete('/user/:id', verifyToken, verifyAdmin, async (req, res) => {
 
 
     // Get all requests with optional status filter
-app.get('/requests', async (req, res) => {
-  const status = req.query.status;
-  const filter = status && status !== 'all' ? { status } : {};
-  const result = await requesterCollection.find(filter).toArray();
-  res.send(result);
-});
+// app.get('/requests', async (req, res) => {
+//   const status = req.query.status;
+//   const filter = status && status !== 'all' ? { status } : {};
+//   const result = await requesterCollection.find(filter).toArray();
+//   res.send(result);
+// });
 
     // Delete Blog
     app.delete('/request/:id', async (req, res) => {
@@ -451,62 +474,119 @@ app.get('/requests', async (req, res) => {
       const result = await requesterCollection.deleteOne(filter);
       res.send(result);
   });
+
+
+
+  // 
+
+  // Update donation status (restricted to volunteers)
+app.put('/requests/:id/status', verifyToken, verifyVolunteer, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  const filter = { _id: new ObjectId(id) };
+  const updateDoc = { $set: { donationStatus: status } };
+
+  try {
+      const result = await requesterCollection.updateOne(filter, updateDoc);
+      res.send(result);
+  } catch (error) {
+      console.error('Error updating status:', error);
+      res.status(500).send('Internal Server Error');
+  }
+});
+
+// Update entire request (accessible to all authorized users)
+app.put('/request/:id', async (req, res) => {
+  const id = req.params.id;
+
+  // Validate the ID
+  if (!ObjectId.isValid(id)) {
+      return res.status(400).send({ error: 'Invalid ID format' });
+  }
+
+  const { hospitalName, fullAddress, donationDate, donationTime, donationStatus } = req.body;
+
+  // Check if required fields are provided
+  if (!hospitalName) {
+      return res.status(400).send({ error: 'Hospital name is required' });
+  }
+
+  const filter = { _id: new ObjectId(id) };
+  const updateDoc = {
+      $set: {
+          hospitalName,
+          fullAddress,
+          donationDate,
+          donationTime,
+          donationStatus
+      }
+  };
+
+  try {
+      const result = await requesterCollection.updateOne(filter, updateDoc);
+      res.send(result);
+  } catch (error) {
+      console.error('Error updating request:', error);
+      res.status(500).send('Internal Server Error');
+  }
+});
   
     // update
 
-    app.put('/requests/:id/status', verifyToken, verifyAdmin, async (req, res) => {
-      const { id } = req.params;
-      const { status } = req.body;
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = { $set: { status } };
-      const result = await requesterCollection.updateOne(filter, updateDoc);
-      res.send(result);
-  });
+//     app.put('/requests/:id/status', verifyToken, verifyAdmin, async (req, res) => {
+//       const { id } = req.params;
+//       const { status } = req.body;
+//       const filter = { _id: new ObjectId(id) };
+//       const updateDoc = { $set: { status } };
+//       const result = await requesterCollection.updateOne(filter, updateDoc);
+//       res.send(result);
+//   });
   
-// update only login user
-    app.put('/request/:id', async (req, res) => {
-      const id = req.params.id;
+// // update only login user
+//     app.put('/request/:id', async (req, res) => {
+//       const id = req.params.id;
 
-      // Validate the ID
-      if (!ObjectId.isValid(id)) {
-        return res.status(400).send({ error: 'Invalid ID format' });
-      }
+//       // Validate the ID
+//       if (!ObjectId.isValid(id)) {
+//         return res.status(400).send({ error: 'Invalid ID format' });
+//       }
 
-      const Request = req.body;
-      console.log(id, Request);
+//       const Request = req.body;
+//       console.log(id, Request);
 
-      // Check if the required fields are provided
-      if (!Request.hospitalName) {
-        return res.status(400).send({ error: 'Hospital name is required' });
-      }
+//       // Check if the required fields are provided
+//       if (!Request.hospitalName) {
+//         return res.status(400).send({ error: 'Hospital name is required' });
+//       }
 
-      const filter = { _id: new ObjectId(id) };
-      const option = {}; // No upsert option
+//       const filter = { _id: new ObjectId(id) };
+//       const option = {}; // No upsert option
 
-      const updatedRequest = {
-        $set: {
-          hospitalName: Request.hospitalName,
-          fullAddress: Request.fullAddress,
-          donationDate: Request.donationDate,
-          donationTime: Request.donationTime,
-          donationStatus: Request.donationStatus,
-          // status: Request.status,
-          // Add other fields to update as needed
-        },
-      };
-
-
+//       const updatedRequest = {
+//         $set: {
+//           hospitalName: Request.hospitalName,
+//           fullAddress: Request.fullAddress,
+//           donationDate: Request.donationDate,
+//           donationTime: Request.donationTime,
+//           donationStatus: Request.donationStatus,
+//           // status: Request.status,
+//           // Add other fields to update as needed
+//         },
+//       };
 
 
-      try {
-        const result = await requesterCollection.updateOne(filter, updatedRequest, option);
-        console.log('Update Result:', result);
-        res.send(result);
-      } catch (error) {
-        console.error('Error updating request:', error);
-        res.status(500).send({ error: 'Internal Server Error' });
-      }
-    });
+
+
+//       try {
+//         const result = await requesterCollection.updateOne(filter, updatedRequest, option);
+//         console.log('Update Result:', result);
+//         res.send(result);
+//       } catch (error) {
+//         console.error('Error updating request:', error);
+//         res.status(500).send({ error: 'Internal Server Error' });
+//       }
+//     });
 
 
     // details
